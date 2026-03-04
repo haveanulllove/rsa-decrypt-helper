@@ -58,10 +58,10 @@ def load_private_key_robustly(key_path):
     return None
 
 def decrypt_rsa(private_key_path, ciphertext_str):
-    """智能 RSA 解密工具"""
+    """智能 RSA 解密工具（支持分段解密）"""
     private_key = load_private_key_robustly(private_key_path)
     if not private_key:
-        print(f"[!] 无法解析私钥。请确保文件是标准 RSA 私钥 (PEM, DER, 或纯 Base64)。")
+        print(f"[!] 无法解析私钥。")
         return None
 
     ciphertext_str = ciphertext_str.strip()
@@ -69,7 +69,6 @@ def decrypt_rsa(private_key_path, ciphertext_str):
         with open(ciphertext_str, "rb") as f:
             ciphertext = f.read()
     else:
-        # 尝试 Base64 / Hex
         try:
             clean_cipher = "".join(ciphertext_str.split())
             ciphertext = base64.b64decode(clean_cipher)
@@ -79,31 +78,31 @@ def decrypt_rsa(private_key_path, ciphertext_str):
             except:
                 ciphertext = ciphertext_str.encode('utf-8')
 
+    # 文档中提到密钥大小是 2048 位，解密块大小是 256 字节
+    key_size_bytes = 256 
+    
     paddings = [
-        ("OAEP SHA-256 / MGF1-SHA256", padding.OAEP(mgf=padding.MGF1(algorithm=hashes.SHA256()), algorithm=hashes.SHA256(), label=None)),
-        ("OAEP SHA-256 / MGF1-SHA1", padding.OAEP(mgf=padding.MGF1(algorithm=hashes.SHA1()), algorithm=hashes.SHA256(), label=None)),
-        ("OAEP SHA-1 / MGF1-SHA1", padding.OAEP(mgf=padding.MGF1(algorithm=hashes.SHA1()), algorithm=hashes.SHA1(), label=None)),
         ("PKCS1v1.5", padding.PKCS1v15()),
+        ("OAEP SHA-256", padding.OAEP(mgf=padding.MGF1(algorithm=hashes.SHA256()), algorithm=hashes.SHA256(), label=None)),
     ]
 
-    print(f"[*] 密文长度: {len(ciphertext)} 字节")
-    results = []
+    print(f"[*] 密文总长度: {len(ciphertext)} 字节")
+    
     for name, pad in paddings:
         try:
-            plaintext = private_key.decrypt(ciphertext, pad)
-            ok, text = is_printable(plaintext)
+            full_plaintext = b""
+            # 分段解密逻辑
+            for i in range(0, len(ciphertext), key_size_bytes):
+                chunk = ciphertext[i:i+key_size_bytes]
+                decrypted_chunk = private_key.decrypt(chunk, pad)
+                full_plaintext += decrypted_chunk
+            
+            ok, text = is_printable(full_plaintext)
             if ok:
-                print(f"[+] 发现有效匹配! 模式: {name}")
+                print(f"[+] 解密成功! 模式: {name} (已自动进行分段处理)")
                 return text
-            else:
-                results.append((name, plaintext))
-        except Exception:
+        except Exception as e:
             continue
-    
-    if results:
-        best_name, best_data = results[0]
-        print(f"[!] 警告：找到能解密的模式 {best_name}，但内容包含不可见字符。")
-        return f"(HEX数据): {best_data.hex()}"
     
     return None
 
