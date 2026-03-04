@@ -1,13 +1,16 @@
-name: Build Windows EXE
+name: Build and Release Windows EXE
 
 on:
   push:
-    branches: [ master ]
-  workflow_dispatch:
+    tags:
+      - 'v*' # 当您提交 v1.0 这样的标签时触发
+  workflow_dispatch: # 您也可以在 Actions 页面手动点运行
 
 jobs:
   build:
     runs-on: windows-latest
+    permissions:
+      contents: write
     steps:
     - uses: actions/checkout@v4
     
@@ -21,12 +24,16 @@ jobs:
         python -m pip install --upgrade pip
         pip install cryptography pyinstaller
         
-    - name: Build EXE with PyInstaller
+    - name: Build EXE
       run: |
         pyinstaller --onefile --name rsa_tool_windows rsa_tool.py
         
-    - name: Upload Artifact
-      uses: actions/upload-artifact@v4
+    - name: Create Release
+      uses: softprops/action-gh-release@v2
       with:
-        name: rsa_tool_exe
-        path: dist/rsa_tool_windows.exe
+        files: dist/rsa_tool_windows.exe
+        tag_name: latest
+        name: RSA Tool Release
+        body: "这是为您自动生成的 Windows RSA 解密工具 (.exe)"
+      env:
+        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
