@@ -7,39 +7,69 @@ from cryptography.hazmat.primitives.asymmetric import padding
 from cryptography.hazmat.backends import default_backend
 
 def is_printable(data):
-    """简单判断解密结果是否为可读文本"""
+    """判断解密结果是否为可读文本"""
     try:
         decoded = data.decode('utf-8')
         return all(c.isprintable() or c in '\n\r\t' for c in decoded), decoded
     except UnicodeDecodeError:
         return False, None
 
-def decrypt_rsa(private_key_path, ciphertext_str):
+def load_private_key_robustly(key_path):
     """
-    智能 RSA 解密：自动尝试不同的填充模式和编码。
+    鲁棒地加载私钥：支持 PEM, DER 以及缺失头尾标记的 Base64 格式。
     """
+    if not os.path.exists(key_path):
+        print(f"[!] 错误：找不到文件 '{key_path}'")
+        return None
+
+    with open(key_path, "rb") as f:
+        key_data = f.read()
+
+    # 1. 尝试直接作为 PEM 加载
     try:
-        if not os.path.exists(private_key_path):
-            print(f"[!] 错误：找不到私钥文件 '{private_key_path}'")
-            return None
-            
-        with open(private_key_path, "rb") as key_file:
-            private_key = serialization.load_pem_private_key(
-                key_file.read(),
-                password=None,
-                backend=default_backend()
-            )
-    except Exception as e:
-        print(f"[!] 无法加载私钥文件 (格式可能不对): {e}")
+        return serialization.load_pem_private_key(key_data, password=None, backend=default_backend())
+    except Exception:
+        pass
+
+    # 2. 尝试作为二进制 DER 加载
+    try:
+        return serialization.load_der_private_key(key_data, password=None, backend=default_backend())
+    except Exception:
+        pass
+
+    # 3. 尝试如果它是纯 Base64 (没有头尾标记)，手动补全再试
+    try:
+        # 清理多余空格、换行
+        clean_key = "".join(key_data.decode('utf-8', errors='ignore').split())
+        # 尝试补全 PKCS8 标记
+        pem_formatted = f"-----BEGIN PRIVATE KEY-----\n{clean_key}\n-----END PRIVATE KEY-----"
+        return serialization.load_pem_private_key(pem_formatted.encode(), password=None, backend=default_backend())
+    except Exception:
+        pass
+
+    # 4. 尝试补全 PKCS1 标记
+    try:
+        clean_key = "".join(key_data.decode('utf-8', errors='ignore').split())
+        pem_formatted = f"-----BEGIN RSA PRIVATE KEY-----\n{clean_key}\n-----END RSA PRIVATE KEY-----"
+        return serialization.load_pem_private_key(pem_formatted.encode(), password=None, backend=default_backend())
+    except Exception:
+        pass
+
+    return None
+
+def decrypt_rsa(private_key_path, ciphertext_str):
+    """智能 RSA 解密工具"""
+    private_key = load_private_key_robustly(private_key_path)
+    if not private_key:
+        print(f"[!] 无法解析私钥。请确保文件是标准 RSA 私钥 (PEM, DER, 或纯 Base64)。")
         return None
 
     ciphertext_str = ciphertext_str.strip()
-    # 如果输入是一个存在的文件路径，则读取文件内容
     if os.path.exists(ciphertext_str):
         with open(ciphertext_str, "rb") as f:
             ciphertext = f.read()
     else:
-        # 尝试解码 Base64/Hex/Raw
+        # 尝试 Base64 / Hex
         try:
             clean_cipher = "".join(ciphertext_str.split())
             ciphertext = base64.b64decode(clean_cipher)
@@ -57,7 +87,6 @@ def decrypt_rsa(private_key_path, ciphertext_str):
     ]
 
     print(f"[*] 密文长度: {len(ciphertext)} 字节")
-    
     results = []
     for name, pad in paddings:
         try:
@@ -80,10 +109,9 @@ def decrypt_rsa(private_key_path, ciphertext_str):
 
 def main():
     print("="*50)
-    print("        RSA 智能解密辅助工具 (Windows v2.0)")
+    print("        RSA 智能解密辅助工具 (Windows v2.1-Robust)")
     print("="*50)
 
-    # 逻辑：如果有命令行参数则使用参数，否则进入交互模式
     if len(sys.argv) >= 3:
         key_p = sys.argv[1]
         cipher_p = sys.argv[2]
@@ -104,8 +132,8 @@ def main():
             print("-" * 20)
             print("="*40)
         else:
-            print("\n[!] 解密失败：已尝试所有常见 RSA 填充模式。")
-            print("    请确认私钥是否正确，以及密文是否完整。")
+            print("\n[!] 解密失败：已尝试所有常见格式和填充模式。")
+            print("    提示：请确保私钥是 RSA 算法生成的，且密文与其匹配。")
 
     print("\n" + "-"*50)
     input("任务结束。请按 [回车键] 退出程序...")
