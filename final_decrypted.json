@@ -1,0 +1,32 @@
+{
+  "total": 1,
+  "totalPage": 1,
+  "datas": [
+    {
+      "vendorAdjustVendorCode": "",
+      "vendorOrderNo": "",
+      "resultNo": "RDR2025083020796",
+      "vendorDesc": "",
+      "steelContractType": "C",
+      "vendorFinalConfirmStatus": "",
+      "resultId": "822520",
+      "vendorAdjustQuantity": "",
+      "batchNum": "A0015048-2026022600001",
+      "vendorConfirmStatus": "40",
+      "vendorFeedbackPriceSys": "",
+      "uuid": "",
+      "vendorConfirmPeople": "马荣耀",
+      "splitFlag": "N",
+      "vendorFinalDesc": "",
+      "vendorFeedbackPrice": "",
+      "vendorConfirmTime": "20260302144453",
+      "vendorAdjustVendorName": "",
+      "vendorRefuseReason": "产能不足",
+      "siliconSteelCoating": "",
+      "vendorOrderSubNo": ""
+    }
+  ],
+  "batchNum": "A0015048-2026022600001",
+  "pageSize": 1,
+  "pageNum": 1
+}
