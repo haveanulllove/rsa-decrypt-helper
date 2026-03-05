@@ -1,0 +1,18 @@
+==================================================
+        RSA 智能解密辅助工具 (Windows v2.1-Robust)
+==================================================
+
+[交互模式] 请输入以下信息：
+1. 请输入私钥文件路径 (例如 private.key): 2. 请输入密文内容 (Base64) 或 密文文件路径: [*] 密文总长度: 1036 字节
+[!] 最近一次尝试的错误信息: Encryption/decryption failed.
+
+[!] 解密失败：已尝试所有常见格式和填充模式。
+    提示：请确保私钥是 RSA 算法生成的，且密文与其匹配。
+
+--------------------------------------------------
+任务结束。请按 [回车键] 退出程序...Traceback (most recent call last):
+  File "/root/rsa-decrypt-helper/rsa_tool.py", line 151, in <module>
+    main()
+  File "/root/rsa-decrypt-helper/rsa_tool.py", line 148, in main
+    input("任务结束。请按 [回车键] 退出程序...")
+EOFError: EOF when reading a line
